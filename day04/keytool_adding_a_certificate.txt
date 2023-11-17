@@ -1,0 +1,1 @@
+keytool -importcert -file ism-ase-ro.pem -keystore ismkeystore.ks -alias "ismasero"
