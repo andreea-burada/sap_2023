@@ -44,17 +44,14 @@ unsigned char* fromAsciiToByte(char* input) {
 	return bytes;
 }
 
-unsigned char* encryptAES(unsigned char* input, unsigned char* IV, AES_KEY* key) {
+unsigned char* encryptAES(unsigned char* input, unsigned char* IV, AES_KEY key) {
 	// allocate space for ciphertext
-	unsigned char* ciphertext = (unsigned char*)malloc(48);
-	memset(ciphertext, NULL, 48);
-	// deep copy IV
-	unsigned char* _IV = (unsigned char*)malloc(16);
+	unsigned char* ciphertext = (unsigned char*)malloc(32);
+	unsigned char _IV[16];
 	memcpy(_IV, IV, 16);
 
-	AES_cbc_encrypt(input, ciphertext, 48, key, _IV, AES_ENCRYPT);
+	AES_cbc_encrypt(input, ciphertext, 32, &key, _IV, AES_ENCRYPT);
 
-	free(_IV);
 	return ciphertext;
 }
 
@@ -68,10 +65,6 @@ int main()
 		// for the password stored on the same line within the input password file.
 	FILE* wordlistFile = NULL, * hashesFile = NULL;
 	errno_t err, err2, err3;
-	SHA_CTX context;
-
-	unsigned char finalDigest[SHA256_DIGEST_LENGTH];
-	SHA1_Init(&context);
 
 	unsigned char* fileBuffer = NULL;
 
@@ -100,6 +93,9 @@ int main()
 				// reset index to get new line
 				_buffer_index = 0;
 				memset(_line_buffer, NULL, _BUFFER);
+
+				// eat one character to consume the /n
+				fgetc(wordlistFile);
 			}
 		}
 		fclose(wordlistFile);
@@ -124,7 +120,6 @@ int main()
 			fread(aesKey, 1, 256 / 8, aesConfig);
 			// set key
 			AES_KEY aes_key;
-			AES_set_encrypt_key(aesKey, 256, &aes_key);
 			fclose(aesConfig);
 
 			char _char;
@@ -142,10 +137,12 @@ int main()
 					_converted_line = fromAsciiToByte(_line_buffer);
 
 					// encrypt
-					unsigned char* _temp_buffer = encryptAES(_converted_line, IV, &aes_key);
+					AES_set_encrypt_key(aesKey, 256, &aes_key);
+					unsigned char* _temp_buffer = encryptAES(_converted_line, IV, aes_key);
+					//unsigned char* _temp_buffer = encryptAES(_line_buffer, IV, &aes_key);
 
 					// write password to file
-					writeHexToFile(_temp_buffer, 48, encFile);
+					writeHexToFile(_temp_buffer, 32, encFile);
 
 					// reset index to get new line
 					free(_temp_buffer);
